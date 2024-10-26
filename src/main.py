@@ -5,7 +5,7 @@ def main():
     w_width = 1050
     w_height = 1050
     gap = 25
-    cell_size = 100
+    cell_size = 75
 
     win = Window(w_width, w_height)
 

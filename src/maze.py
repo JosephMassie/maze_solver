@@ -246,7 +246,7 @@ class Maze():
                     print(f"  -- came back with {result}, {cells_checked}, {bad_cells}")
                     if result:
                         return (True, cells_checked, incorrect_cells)
-                    incorrect_cells += additional_cells
+                    incorrect_cells += 1
                     print(f" <- bad path. back tracking {additional_cells} cells, so far had {incorrect_cells} bad cells")
                     cur.draw_path_to(cell, color=INCORRECT_COLOR)
         return (False, cells_checked, incorrect_cells)
