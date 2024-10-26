@@ -1,9 +1,22 @@
 from graphics import *
 import time
 import random
+from constants import *
 
 class Cell():
-    def __init__(self, *, win: Window = None, x: int, y: int, width: int, height: int, has_left: bool = True, has_top: bool = True, has_right: bool = True, has_bottom: bool = True) -> None:
+    def __init__(
+            self,
+            *,
+            win: Window = None,
+            x: int,
+            y: int,
+            width: int,
+            height: int,
+            has_left: bool = True,
+            has_top: bool = True,
+            has_right: bool = True,
+            has_bottom: bool = True
+            ) -> None:
         self._win = win
         self.center = Point(x, y)
         self.width = width
@@ -18,7 +31,8 @@ class Cell():
         self.create_lines()
     
     def __repr__(self) -> str:
-        return f"Cell: [{self.center.x},{self.center.y}] [{self.width}, {self.height}]\n  [T:{self.has_top},B:{self.has_bot},R:{self.has_right},L:{self.has_left}]"
+        return f"""Cell: [{self.center.x},{self.center.y}] [{self.width}, {self.height}]
+    [T:{self.has_top},B:{self.has_bot},R:{self.has_right},L:{self.has_left}]"""
 
     def create_lines(self):
         half_w = self.width / 2
@@ -31,7 +45,7 @@ class Cell():
         bot_right = Point(x + half_w, y + half_h)
         bot_left = Point(x - half_w, y + half_h)
 
-        get_color = lambda should: "black" if should else "#d9d9d9"
+        get_color = lambda should: MAIN_COLOR if should else FAINT_COLOR
 
         self.walls = [
             (Line(top_left, top_right), get_color(self.has_top)),
@@ -44,10 +58,12 @@ class Cell():
         for wall, color in self.walls:
             self._win.draw_line(wall, color)
     
-    def draw_path_to(self, other, undo=False):
-        color = "red" if undo else "grey"
+    def draw_path_to(self, other, *, color: str = None, undo=False):
+        draw_color = color
+        if draw_color == None:
+            draw_color = INCORRECT_COLOR if undo else BG_COLOR
         path = Line(self.center, other.center)
-        self._win.draw_line(path, color)
+        self._win.draw_line(path, color, width=4)
 
 class Maze():
     def __init__(
@@ -68,6 +84,10 @@ class Maze():
         self.cell_size = cell_size
         self._win = win
         self.cells: list[list[Cell]] = None
+        self.ent_x = 0
+        self.ent_y = 0
+        self.exit_x = num_cols - 1
+        self.exit_y = num_rows - 1
 
         if seed != None:
             random.seed(seed)
@@ -76,21 +96,21 @@ class Maze():
     
     def _create_cells(self) -> None:
         cells = []
-        for i in range(self.num_rows):
+        for i in range(self.num_cols):
             y = self.y1 + self.cell_size * i
             row = []
-            for j in range(self.num_cols):
+            for j in range(self.num_rows):
                 x = self.x1 + self.cell_size * j
                 row.append(Cell(win=self._win, x=x, y=y, width=self.cell_size, height=self.cell_size))
             cells.append(row)
         self.cells = cells
         self._draw_cells()
         self._break_entrance_and_exit()
-        self._break_walls(0, 0)
+        self._break_walls(self.ent_x, self.ent_y)
         self._reset_visited()
     
     def _is_valid_coord(self, x: int, y: int) -> bool:
-        return x >= 0 and x < self.num_cols and y >= 0 and y < self.num_rows
+        return x >= 0 and x < self.num_rows and y >= 0 and y < self.num_cols
     
     def get_cell(self, x: int, y: int) -> Cell | None:
         if self._is_valid_coord(x, y):
@@ -100,7 +120,7 @@ class Maze():
     def _is_visited(self, x: int, y: int) -> bool:
         return self.get_cell(x, y).visited
     
-    def _draw_cell(self, x: int, y: int, wait: float = 0.05) -> None:
+    def _draw_cell(self, x: int, y: int, wait: float = DRAW_SPEED) -> None:
         if self._is_valid_coord(x, y):
             print(f"redrawing cell {x},{y}: {self.get_cell(x,y)}")
             self.get_cell(x, y).draw()
@@ -112,32 +132,33 @@ class Maze():
         for row in self.cells:
             for cell in row:
                 cell.draw()
-                self._animate(0.01)
     
     def _reset_visited(self) -> None:
         for row in self.cells:
             for cell in row:
                 cell.visited = False
     
-    def _animate(self, wait: float = 0.05) -> None:
+    def _animate(self, wait: float = DRAW_SPEED) -> None:
         if self._win == None:
             return
         self._win.redraw()
         time.sleep(wait)
 
     def _break_entrance_and_exit(self) -> None:
-        start = self.get_cell(0, 0)
+        self.ent_x = random.randint(0, self.num_rows-1)
+        self.exit_x = random.randint(0, self.num_rows-1)
+        start = self.get_cell(self.ent_x, self.ent_y)
         start.has_top = False
         start.create_lines()
-        self._draw_cell(0, 0)
+        self._draw_cell(self.ent_x, self.ent_y)
 
-        end = self.get_cell(self.num_cols-1, self.num_rows-1)
+        end = self.get_cell(self.exit_x, self.exit_y)
         end.has_bot = False
         end.create_lines()
-        self._draw_cell(self.num_cols-1, self.num_rows-1)
+        self._draw_cell(self.exit_x, self.exit_y)
 
     def _get_adjacent_coords(self, x: int, y: int) -> list[tuple[int, int]]:
-        return list(filter(lambda c: self._is_valid_coord(*c), [(x,y+1), (x+1,y), (x-1,y), (x,y-1)]))
+        return list(filter(lambda c: self._is_valid_coord(*c), [(x+1,y), (x-1,y), (x,y+1), (x,y-1)]))
     
     def _get_adjacent_cells(self, x: int, y: int) -> list[Cell]:
         adjacent = []
@@ -191,17 +212,19 @@ class Maze():
                 next.has_bot = False
             cur.create_lines()
             next.create_lines()
-            self._draw_cell(x, y, 0.01)
-            self._draw_cell(xx, yy, 0.01)
+            self._draw_cell(x, y)
+            self._draw_cell(xx, yy)
             self._break_walls(xx, yy)
 
-    def _solve_r(self, x: int, y: int) -> bool:
-        self._animate(0.05)
+    def _solve_r(self, x: int, y: int) -> tuple[bool, int, int]:
+        self._animate(0.005)
         cur = self.get_cell(x, y)
         cur.visited = True
+        cells_checked = 1
+        incorrect_cells = 0
 
-        if x == self.num_cols - 1 and y == self.num_rows - 1:
-            return True
+        if x == self.exit_x and y == self.exit_y:
+            return (True, cells_checked, incorrect_cells)
         
         adjacent = self._get_adjacent_coords(x, y)
         for xx, yy in adjacent:
@@ -215,12 +238,25 @@ class Maze():
                     (cur.has_right == False and xx > x) or
                     (cur.has_left == False and xx < x)
                     ):
-                    self._win.draw_line(path, "green")
-                    result = self._solve_r(xx, yy)
+                    print(f" -> checking cell {xx, yy}")
+                    cur.draw_path_to(cell, color=CORRECT_COLOR)
+                    result, additional_cells, bad_cells = self._solve_r(xx, yy)
+                    cells_checked += additional_cells
+                    incorrect_cells += bad_cells
+                    print(f"  -- came back with {result}, {cells_checked}, {bad_cells}")
                     if result:
-                        return True
-                    self._win.draw_line(path, "red")
-        return False
+                        return (True, cells_checked, incorrect_cells)
+                    incorrect_cells += additional_cells
+                    print(f" <- bad path. back tracking {additional_cells} cells, so far had {incorrect_cells} bad cells")
+                    cur.draw_path_to(cell, color=INCORRECT_COLOR)
+        return (False, cells_checked, incorrect_cells)
 
     def solve(self) -> bool:
-        return self._solve_r(0, 0)
+        print("\n\nstarting to solve...\n")
+        succeeded, cells_checked, incorrect_cells = self._solve_r(self.ent_x, self.ent_y)
+        if succeeded:
+            print(f""" => solved! found the end. checked {cells_checked} cells
+    {incorrect_cells} were incorrect! thats {incorrect_cells / cells_checked * 100}%!""")
+        else:
+            print(" x> failed. never found the end.")
+        return succeeded

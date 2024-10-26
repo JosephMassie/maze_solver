@@ -1,0 +1,9 @@
+# Colors
+BG_COLOR = "#021633"
+FAINT_COLOR = "#011e49"
+MAIN_COLOR = "#fafcea"
+CORRECT_COLOR = "#0bba68"
+INCORRECT_COLOR = "#db3208"
+
+# Animations
+DRAW_SPEED = 0.0001
