@@ -87,6 +87,7 @@ class Maze():
         self._draw_cells()
         self._break_entrance_and_exit()
         self._break_walls(0, 0)
+        self._reset_visited()
     
     def _is_valid_coord(self, x: int, y: int) -> bool:
         return x >= 0 and x < self.num_cols and y >= 0 and y < self.num_rows
@@ -111,7 +112,12 @@ class Maze():
         for row in self.cells:
             for cell in row:
                 cell.draw()
-                self._animate()
+                self._animate(0.01)
+    
+    def _reset_visited(self) -> None:
+        for row in self.cells:
+            for cell in row:
+                cell.visited = False
     
     def _animate(self, wait: float = 0.05) -> None:
         if self._win == None:
@@ -125,10 +131,22 @@ class Maze():
         start.create_lines()
         self._draw_cell(0, 0)
 
-        end = self.get_cell(self.num_rows-1, self.num_cols-1)
+        end = self.get_cell(self.num_cols-1, self.num_rows-1)
         end.has_bot = False
         end.create_lines()
-        self._draw_cell(self.num_rows-1, self.num_cols-1)
+        self._draw_cell(self.num_cols-1, self.num_rows-1)
+
+    def _get_adjacent_coords(self, x: int, y: int) -> list[tuple[int, int]]:
+        return list(filter(lambda c: self._is_valid_coord(*c), [(x,y+1), (x+1,y), (x-1,y), (x,y-1)]))
+    
+    def _get_adjacent_cells(self, x: int, y: int) -> list[Cell]:
+        adjacent = []
+        coords = self._get_adjacent_coords(x, y)
+        for xx, yy in coords:
+            cell = self.get_cell(xx, yy)
+            if cell:
+                adjacent.append(cell)
+        return adjacent
     
     def _break_walls(self, x, y) -> None:
         print(f"-> breaking [{x},{y}]")
@@ -137,7 +155,7 @@ class Maze():
             return
         cur: Cell = self.get_cell(x, y)
         cur.visited = True
-        to_visit = list(filter(lambda c: self._is_valid_coord(*c) and not self._is_visited(*c), [(x,y+1), (x,y-1), (x-1,y), (x+1,y)]))
+        to_visit = list(filter(lambda c: not self._is_visited(*c), self._get_adjacent_coords(x, y)))
         print(f" --> n:{to_visit}")
         while True:
             unvisited_count = len(to_visit)
@@ -173,6 +191,36 @@ class Maze():
                 next.has_bot = False
             cur.create_lines()
             next.create_lines()
-            self._draw_cell(x, y)
-            self._draw_cell(xx, yy)
+            self._draw_cell(x, y, 0.01)
+            self._draw_cell(xx, yy, 0.01)
             self._break_walls(xx, yy)
+
+    def _solve_r(self, x: int, y: int) -> bool:
+        self._animate(0.05)
+        cur = self.get_cell(x, y)
+        cur.visited = True
+
+        if x == self.num_cols - 1 and y == self.num_rows - 1:
+            return True
+        
+        adjacent = self._get_adjacent_coords(x, y)
+        for xx, yy in adjacent:
+            cell = self.get_cell(xx, yy)
+            if not cell.visited:
+                path = Line(cur.center, cell.center)
+
+                if (
+                    (cur.has_bot == False and yy > y) or
+                    (cur.has_top == False and yy < y) or
+                    (cur.has_right == False and xx > x) or
+                    (cur.has_left == False and xx < x)
+                    ):
+                    self._win.draw_line(path, "green")
+                    result = self._solve_r(xx, yy)
+                    if result:
+                        return True
+                    self._win.draw_line(path, "red")
+        return False
+
+    def solve(self) -> bool:
+        return self._solve_r(0, 0)
