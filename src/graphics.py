@@ -27,7 +27,7 @@ class Window():
     def __init__(self, width: int, height: int) -> None:
         self._root = Tk()
         self._root.title = "Maze Solver"
-        self._canvas = Canvas(self._root, bg="grey", height=height, width=width)
+        self._canvas = Canvas(self._root, bg="#d9d9d9", height=height, width=width)
         self._canvas.pack(fill=BOTH, expand=1)
         self._running = False
         self._root.protocol("WM_DELETE_WINDOW", self.close)
